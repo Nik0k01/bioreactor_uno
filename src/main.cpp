@@ -11,7 +11,6 @@ float GravValue;
 Servo DfRobotPump;
 
 int DFRobotPumpPin = 3; // DFRobotPump Output (PUMP_0)
-
 // which analog pin to connect
 #define THERMISTORPIN A1
 
