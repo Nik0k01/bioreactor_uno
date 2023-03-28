@@ -1,71 +1,39 @@
 import sys
-import warnings
 from PyQt6.QtCore import *
-from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
 import time
-import serial, serial.tools.list_ports
-import re
+
+from gui.arduino import Arduino
+from gui.timeWorker import Worker
 from ui_MainWindow import Ui_MainWindow
 
+class SignalPh(QObject):
+    pump_run = pyqtSignal(int, int)
 
-class WorkerSignals(QObject):
-    progress = pyqtSignal()
-    time_signal = pyqtSignal(object)
+class WorkerPh(QRunnable):
+
+    def __init__(self, ph_goal):
+        super(WorkerPh, self).__init__()
+        self.ph_goal = ph_goal
+        self.signals = SignalPh()
+
+    @pyqtSlot(float)
+    def run(self, ph_current):
+        while abs(ph_current - self.ph_goal) < 0.3:
+            # If the pH is to low turn base pump
+            if self.ph_goal - ph_current > 0:
+                self.signals.pump_run.emit(2, 85)
+                # Pump base for 8 seconds
+                time.sleep(8)
+                self.signals.pump_run.emit(2, 0)
+            # If the pH is to high turn acid pumpp
+            else:
+                self.signals.pump_run.emit(3, 255)
+                # Pump acid for 8 seconds
+                time.sleep(8)
+                self.signals.pump_run.emit(3, 0)
 
 
-class Worker(QObject):
-    signals = WorkerSignals()
-    i = 0
-
-    def __init__(self):
-        super(Worker, self).__init__()
-
-    def run(self):
-        while True:
-            self.i += 1
-            time.sleep(1)
-            if self.i == 1 or self.i % 5 == 0:
-                self.signals.progress.emit()
-                self.signals.time_signal.emit(time.ctime().split()[3])
-
-
-class Arduino():
-    def __init__(self):
-        self.ports = [port.device for port in serial.tools.list_ports.comports() if 'Arduino' in port.description]
-        if not self.ports:
-            self.board = None
-        self.board = serial.Serial(self.ports[0], 115200)
-
-    def pump_speed(self, pump_number, feed):
-        """
-        Sets the state of a pump used for pumping nutrition or controlling the pH in the bioreactor
-        :param pump_number: what kind of pump connected to arduino 1 - nutrition, 2 - acid, 3 - base
-        :param feed: volume flow rate ml/min
-        :return: None,
-        """
-        # 85 ml/min - 255, pump starts pumping anything at all from 120
-        pwm_speed = 0 if feed == 0 else feed / 85 * 135 + 120
-        serial_line = f'CMD,SET_PUMP,{pump_number},{pwm_speed}'
-        self.board.write(serial_line.encode())
-
-    def get_data(self):
-        """
-        Read data from the serial monitor
-        :return: values of temperature, pH and saturation in oxygen
-        """
-        try:
-            print('Getting data...')
-            data = self.board.readline().decode().rstrip()
-            print('Deciphering data...')
-            return self.decipher_data(data)
-        except:
-            return {}
-
-    def decipher_data(self, a_string):
-        numbers = re.findall(r'\d+\.\d+', a_string)
-        names = ['temp', 'pH', 'oxy']
-        return {name: number for name, number in zip(names, numbers)}
 
 
 class MainWindow(QMainWindow):
@@ -74,9 +42,11 @@ class MainWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.board = Arduino()
+        self.board_info()
         self.threadpool = QThreadPool()
         self.dataFile = open(f'data_log/data{time.ctime().replace(" ", "_").replace(":", "_")}.txt', 'w')
         self.ui.nutriSlider.valueChanged.connect(lambda: self.ui.nutriLcd.display(self.ui.nutriSlider.value()))
+        self.ui.nutriSlider.valueChanged.connect(lambda: self.board.pump_speed(1, self.ui.nutriSlider.value()))
 
 
         # Permanent thread for timing measurements
