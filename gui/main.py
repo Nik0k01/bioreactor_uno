@@ -7,31 +7,34 @@ from gui.arduino import Arduino
 from gui.timeWorker import Worker
 from ui_MainWindow import Ui_MainWindow
 
+
 class SignalPh(QObject):
     pump_run = pyqtSignal(int, int)
 
+
 class WorkerPh(QRunnable):
 
-    def __init__(self, ph_goal):
+    def __init__(self, ph_goal, ph_current):
         super(WorkerPh, self).__init__()
         self.ph_goal = ph_goal
         self.signals = SignalPh()
+        self.ph_current = ph_current
 
     @pyqtSlot(float)
-    def run(self, ph_current):
-        while abs(ph_current - self.ph_goal) < 0.3:
-            # If the pH is to low turn base pump
-            if self.ph_goal - ph_current > 0:
-                self.signals.pump_run.emit(2, 85)
-                # Pump base for 8 seconds
-                time.sleep(8)
-                self.signals.pump_run.emit(2, 0)
-            # If the pH is to high turn acid pumpp
-            else:
-                self.signals.pump_run.emit(3, 255)
-                # Pump acid for 8 seconds
-                time.sleep(8)
-                self.signals.pump_run.emit(3, 0)
+    def run(self):
+        # If the pH is to low turn base pump
+        if self.ph_goal - self.ph_current > 0:
+            self.signals.pump_run.emit(2, 85)
+            # Pump base for 8 seconds
+            time.sleep(8)
+            self.signals.pump_run.emit(2, 0)
+        # If the pH is to high turn acid pumpp
+        else:
+            self.signals.pump_run.emit(3, 255)
+            # Pump acid for 8 seconds
+            time.sleep(8)
+            self.signals.pump_run.emit(3, 0)
+        print('Done pumping')
 
 
 
@@ -54,6 +57,7 @@ class MainWindow(QMainWindow):
         self.time_thread = QThread()
         self.time_worker.moveToThread(self.time_thread)
         self.time_worker.signals.progress.connect(lambda: self.update_lcds(self.board.get_data()))
+        self.time_worker.signals.progress.connect(lambda: self.ph_check())
         self.time_worker.signals.time_signal.connect(self.data_writer)
         self.time_thread.started.connect(self.time_worker.run)
         self.ui.startBtn.clicked.connect(self.time_thread.start)
@@ -86,10 +90,18 @@ class MainWindow(QMainWindow):
         self.dataFile.write(data_line)
         self.dataFile.flush()
 
-    def closeEvent(self, event):
+    def ph_check(self):
+        # Check if the pH is allright and prevent running multiple threads of running this task (pH adjustment takes
+        # some time)
+        if self.threadpool.activeThreadCount() < 3 and abs(self.ui.pHLcd.value() - self.ui.phSetBox.value()) > 0.3:
+            ph_worker = WorkerPh(self.ui.phSetBox.value(), self.ui.pHLcd.value())
+            ph_worker.signals.pump_run.connect(self.board.pump_speed)
+            self.threadpool.start(ph_worker)
 
+
+    def closeEvent(self, event):
         reply = QMessageBox.question(self, 'Message',
-                    "Are you sure to quit?", QMessageBox.StandardButton.Yes |
+                    "Czy na pewno chcesz wyjść?", QMessageBox.StandardButton.Yes |
                     QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
 
         if reply == QMessageBox.StandardButton.Yes:
@@ -98,10 +110,6 @@ class MainWindow(QMainWindow):
             event.accept()
         else:
             event.ignore()
-
-
-
-
 
 def main():
     app = QApplication(sys.argv)
