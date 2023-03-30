@@ -62,10 +62,12 @@ class MainWindow(QMainWindow):
     def ph_check(self):
         # Check if the pH is allright and prevent running multiple threads of running this task (pH adjustment takes
         # some time)
-        if self.threadpool.activeThreadCount() < 3 and abs(self.ui.pHLcd.value() - self.ui.phSetBox.value()) > 0.3:
+        if self.threadpool.activeThreadCount() < 1 and abs(self.ui.pHLcd.value() - self.ui.phSetBox.value()) > 0.3:
             ph_worker = WorkerPh(self.ui.phSetBox.value(), self.ui.pHLcd.value())
             ph_worker.signals.pump_run.connect(self.board.pump_speed)
             self.threadpool.start(ph_worker)
+        else:
+            print('Waiting for the previous thread to end.')
 
 
     def closeEvent(self, event):
