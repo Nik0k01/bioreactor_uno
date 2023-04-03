@@ -2,9 +2,9 @@ import sys
 from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 import time
-from gui.arduino import Arduino
-from gui.phWorker import WorkerPh
-from gui.timeWorker import Worker
+from arduino import Arduino
+from phWorker import WorkerPh
+from timeWorker import Worker
 from ui_MainWindow import Ui_MainWindow
 
 
@@ -16,9 +16,9 @@ class MainWindow(QMainWindow):
         self.board = Arduino()
         self.board_info()
         self.threadpool = QThreadPool()
-        self.dataFile = open(f'data_log/data{time.ctime().replace(" ", "_").replace(":", "_")}.txt', 'w')
+        self.dataFile = open(f'gui/data_log/data_{time.ctime().replace(" ", "_").replace(":", "_")}.txt', 'a')
         self.ui.nutriSlider.valueChanged.connect(lambda: self.ui.nutriLcd.display(self.ui.nutriSlider.value()))
-        self.ui.nutriSlider.valueChanged.connect(lambda: self.board.pump_speed(1, self.ui.nutriSlider.value()))
+        self.ui.nutriSlider.sliderReleased.connect(lambda: self.board.pump_speed(0, self.ui.nutriSlider.value()))
 
 
         # Permanent thread for timing measurements
@@ -46,9 +46,9 @@ class MainWindow(QMainWindow):
             self.ui.portStatus.setText(f'{self.board.ports[0]}')
 
     def update_lcds(self, data):
-        self.ui.pHLcd.display(float(data.get('pH', -999)))
-        self.ui.tempLcd.display(float(data.get('temp', -999)))
-        self.ui.oxyLcd.display(float(data.get('oxy', -999)))
+        self.ui.pHLcd.display(float(data.get('PH', -999)))
+        self.ui.tempLcd.display(float(data.get('TEMP', -999)))
+        self.ui.oxyLcd.display(float(data.get('GS', -999)))
 
     @pyqtSlot(object)
     def data_writer(self, time_signal):

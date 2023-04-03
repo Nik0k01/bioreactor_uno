@@ -19,6 +19,6 @@ class Worker(QObject):
         while True:
             self.i += 1
             time.sleep(1)
-            if self.i == 1 or self.i % 5 == 0:
+            if self.i == 1 or self.i % 30 == 0:
                 self.signals.progress.emit()
                 self.signals.time_signal.emit(time.ctime().split()[3])

@@ -441,6 +441,7 @@ class Ui_MainWindow(object):
         self.nutriSlider = QtWidgets.QSlider(parent=self.frame)
         self.nutriSlider.setAutoFillBackground(False)
         self.nutriSlider.setMaximum(85)
+        self.nutriSlider.setMinimum(0)
         self.nutriSlider.setProperty("value", 35)
         self.nutriSlider.setSliderPosition(35)
         self.nutriSlider.setOrientation(QtCore.Qt.Orientation.Horizontal)
