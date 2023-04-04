@@ -6,6 +6,8 @@ from arduino import Arduino
 from phWorker import WorkerPh
 from timeWorker import Worker
 from ui_MainWindow import Ui_MainWindow
+from serial_terminal_widget import SerialTerminalWidget
+
 
 
 class MainWindow(QMainWindow):
@@ -66,7 +68,9 @@ class MainWindow(QMainWindow):
             ph_worker = WorkerPh(self.ui.phSetBox.value(), self.ui.pHLcd.value())
             ph_worker.signals.pump_run.connect(self.board.pump_speed)
             self.threadpool.start(ph_worker)
-        else:
+        elif abs(self.ui.pHLcd.value() - self.ui.phSetBox.value()) < 0.3:
+            print('PH OK!')
+        else:    
             print('Waiting for the previous thread to end.')
 
 
@@ -87,6 +91,7 @@ def main():
     app.setStyle('Fusion')
     window = MainWindow()
     window.show()
+
     sys.exit(app.exec())
 
 

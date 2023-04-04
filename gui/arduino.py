@@ -2,6 +2,7 @@ import re
 import serial
 import serial.tools.list_ports
 from PyQt6 import QtCore
+from PyQt6.QtSerialPort import QSerialPort, QSerialPortInfo
 import time, math
 
 
@@ -11,7 +12,7 @@ class Arduino(QtCore.QObject):
         self.ports = [port.device for port in serial.tools.list_ports.comports() if 'Arduino' in port.description]
         if not self.ports:
             self.board = None
-        self.board = serial.Serial(self.ports[0], 115200, writeTimeout=0, timeout=.1)
+        self.board = serial.Serial(self.ports[0], 115200, writeTimeout=0)
 
     @QtCore.pyqtSlot(int, int)
     def pump_speed(self, pump_number, feed):
@@ -23,8 +24,10 @@ class Arduino(QtCore.QObject):
         """
         # 85 ml/min - 255, pump starts pumping anything at all from 150
         pwm_speed = 0 if feed == 0 else math.floor(feed / 85 * 75) + 150
-        serial_line = f'CMD,SET_PUMP,{pump_number},{pwm_speed}'
-        self.board.write(serial_line.encode('UTF-8'))
+        serial_line = f'CMD,SET_PUMP,{pump_number},{pwm_speed}\n'
+        self.board.write(serial_line.encode())
+        self.board.reset_input_buffer()
+        time.sleep(.1)
         print('Written!')
 
     def get_data(self):

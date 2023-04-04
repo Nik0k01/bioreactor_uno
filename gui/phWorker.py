@@ -29,5 +29,5 @@ class WorkerPh(QRunnable):
             # Pump acid for 8 seconds
             time.sleep(8)
             self.signals.pump_run.emit(2, 0)
-        time.sleep(15)
+        time.sleep(5)
         print('Done pumping')
