@@ -30,4 +30,4 @@ class WorkerPh(QRunnable):
             time.sleep(8)
             self.signals.pump_run.emit(2, 0)
         time.sleep(5)
-        print('Done pumping')
+

@@ -5,6 +5,7 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 class WorkerSignals(QObject):
     progress = pyqtSignal()
+    ph_signal = pyqtSignal()
     time_signal = pyqtSignal(object)
 
 
@@ -18,7 +19,11 @@ class Worker(QObject):
     def run(self):
         while True:
             self.i += 1
-            time.sleep(1)
-            if self.i == 1 or self.i % 2 == 0:
-                self.signals.progress.emit()
+            time.sleep(1)  
+            # Signal for lcd display
+            self.signals.progress.emit()
+            if self.i % 5 == 0:
+                self.signals.ph_signal.emit()
+            if self.i % 30 == 0:
+                # Signal for ph_check and data writer
                 self.signals.time_signal.emit(time.ctime().split()[3])

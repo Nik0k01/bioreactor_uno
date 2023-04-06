@@ -26,9 +26,9 @@ class Arduino(QtCore.QObject):
         pwm_speed = 0 if feed == 0 else math.floor(feed / 85 * 75) + 150
         serial_line = f'CMD,SET_PUMP,{pump_number},{pwm_speed}\n'
         self.board.write(serial_line.encode())
-        self.board.reset_input_buffer()
         time.sleep(.1)
-        print('Written!')
+        self.board.reset_input_buffer()
+        print('Pump has been activated!')
 
     def get_data(self):
         """
@@ -39,6 +39,7 @@ class Arduino(QtCore.QObject):
             data = self.board.readline().decode().rstrip()
             # print(data)
             # print('Deciphering data...')
+            time.sleep(0.1)
             return self.decipher_data(data)
         except:
             return {}

@@ -16,9 +16,10 @@ class MainWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.board = Arduino()
+        self.board.board.reset_output_buffer()
         self.board_info()
         self.threadpool = QThreadPool()
-        self.dataFile = open(f'gui/data_log/data_{time.ctime().replace(" ", "_").replace(":", "_")}.txt', 'a')
+        self.dataFile = open(f'gui/data_log/data_{time.ctime().replace(" ", "_").replace(":", "_")}.csv', 'a')
         self.ui.nutriSlider.valueChanged.connect(lambda: self.ui.nutriLcd.display(self.ui.nutriSlider.value()))
         self.ui.nutriSlider.sliderReleased.connect(lambda: self.board.pump_speed(0, self.ui.nutriSlider.value()))
 
@@ -28,7 +29,7 @@ class MainWindow(QMainWindow):
         self.time_thread = QThread()
         self.time_worker.moveToThread(self.time_thread)
         self.time_worker.signals.progress.connect(lambda: self.update_lcds(self.board.get_data()))
-        self.time_worker.signals.progress.connect(lambda: self.ph_check())
+        self.time_worker.signals.ph_signal.connect(lambda: self.ph_check())
         self.time_worker.signals.time_signal.connect(self.data_writer)
         self.time_thread.started.connect(self.time_worker.run)
         self.ui.startBtn.clicked.connect(self.time_thread.start)
@@ -54,9 +55,9 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(object)
     def data_writer(self, time_signal):
-        data_line = f'{time_signal} : Temp = {self.ui.tempLcd.value()} *C : ' \
-                    f'pH = {self.ui.pHLcd.value()} : Oxygen = {self.ui.oxyLcd.value()} mg/L :' \
-                    f' Q_in = {self.ui.nutriLcd.value()} ml/min \n'
+        data_line = f'{time_signal},Temp,{self.ui.tempLcd.value()},*C,' \
+                    f'pH,{self.ui.pHLcd.value()},Oxygen,{self.ui.oxyLcd.value()},mg/L,' \
+                    f'Q_in,{self.ui.nutriLcd.value()},ml/min\n'
         print(data_line)
         self.dataFile.write(data_line)
         self.dataFile.flush()
@@ -64,7 +65,7 @@ class MainWindow(QMainWindow):
     def ph_check(self):
         # Check if the pH is allright and prevent running multiple threads of running this task (pH adjustment takes
         # some time)
-        if self.threadpool.activeThreadCount() < 1 and abs(self.ui.pHLcd.value() - self.ui.phSetBox.value()) > 0.3:
+        if (self.threadpool.activeThreadCount() < 1) and (abs(self.ui.pHLcd.value() - self.ui.phSetBox.value()) > 0.3) and (self.ui.pHLcd.value() != -999):
             ph_worker = WorkerPh(self.ui.phSetBox.value(), self.ui.pHLcd.value())
             ph_worker.signals.pump_run.connect(self.board.pump_speed)
             self.threadpool.start(ph_worker)
